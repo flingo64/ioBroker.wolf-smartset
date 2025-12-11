@@ -602,6 +602,9 @@ class WolfSmartsetAdapter extends utils.Adapter {
         if (this.emptyCount >= 10) {
             // no data for long time try a restart
             this.emptyCount = 0;
+            this.log.warn(
+                `_SetStatesArray(); Did not receive data from server during last 10 polls: triggering reload...`,
+            );
             await this._mainloop(null);
             return;
         }
