@@ -12,6 +12,10 @@ const timeoutHandler = [];
 const BUNDLEID_FULL = 0;
 const BUNDLEID_DEFAULT = 1000;
 
+// exponential backoff for main loop restart in case of initialization problems
+const MAIN_RESTART_DELAY_START = 60 * 1000; // start with 1 minute
+const MAIN_RESTART_DELAY_MAX = 24 * 60 * 60 * 1000; // max: 24h
+
 let ParamObjList = [];
 //const objects = {};
 
@@ -27,6 +31,7 @@ class WolfSmartsetAdapter extends utils.Adapter {
     ValueIdListShortCycle;
     BundleIdLongCycle;
     ValueIdListLongCycle;
+    restartDelay;
     /**
      * @param [options] - adapter options
      */
@@ -35,6 +40,8 @@ class WolfSmartsetAdapter extends utils.Adapter {
             ...options,
             name: 'wolf-smartset',
         });
+        // initialize the restart delay
+        this.restartDelay = MAIN_RESTART_DELAY_START;
         this.on('ready', this.onReady.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
         // this.on('objectChange', this.onObjectChange.bind(this));
@@ -678,12 +685,17 @@ class WolfSmartsetAdapter extends utils.Adapter {
         } catch (error) {
             this.setState('info.connection', { val: false, ack: true });
             this.log.warn(error);
-            this.log.warn('Trying again in 60 sec...');
+            this.log.warn(`Trying again in ${this.restartDelay / 1000} sec...`);
             timeoutHandler['restartTimeout'] = setTimeout(async () => {
                 this._mainloop(null);
-            }, 60000);
+            }, this.restartDelay);
+
+            // recalculate restart delay for next error (exponential backoff)
+            this.restartDelay = Math.min(this.restartDelay * 4, MAIN_RESTART_DELAY_MAX);
         }
 
+        // main loop started sucessfully: reset restart delay
+        this.restartDelay = MAIN_RESTART_DELAY_START;
         this.subscribeStates('*');
     }
 
