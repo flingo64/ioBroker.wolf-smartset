@@ -695,6 +695,7 @@ class WolfSmartsetAdapter extends utils.Adapter {
 
             // recalculate restart delay for next error (exponential backoff)
             this.restartDelay = Math.min(this.restartDelay * 4, MAIN_RESTART_DELAY_MAX);
+            return;
         }
 
         // main loop started sucessfully: reset restart delay
